@@ -113,6 +113,18 @@ bool RobotInterface::getFeedbacksRaw(unsigned int maxAttempts, double attemptDel
             base = m_robotBasePort.read(false);
             if(base != NULL)
             {
+                if(m_isFirstExternalBase)
+                {
+                    m_firstExternalBaseOffset.setPosition(iDynTree::Position((*base)(0),
+                                                                              (*base)(1),
+                                                                              (*base)(2) - m_heightOffset));
+                    m_firstExternalBaseOffset.setRotation(iDynTree::Rotation::RPY((*base)(3),
+                                                                                   (*base)(4),
+                                                                                   (*base)(5)));
+                    m_firstExternalBaseOffset = m_firstExternalBaseOffset.inverse() * m_robotBaseTransform;
+                    m_isFirstExternalBase = false;
+                }
+
                 m_robotBaseTransform.setPosition(iDynTree::Position((*base)(0),
                                                                     (*base)(1),
                                                                     (*base)(2) - m_heightOffset));
@@ -120,6 +132,8 @@ bool RobotInterface::getFeedbacksRaw(unsigned int maxAttempts, double attemptDel
                 m_robotBaseTransform.setRotation(iDynTree::Rotation::RPY((*base)(3),
                                                                          (*base)(4),
                                                                          (*base)(5)));
+
+                m_robotBaseTransform = m_robotBaseTransform * m_firstExternalBaseOffset;
 
                 m_robotBaseTwist.setLinearVec3(iDynTree::Vector3(base->data() + 6, 3));
                 m_robotBaseTwist.setAngularVec3(iDynTree::Vector3(base->data() + 6 + 3, 3));

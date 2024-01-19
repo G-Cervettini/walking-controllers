@@ -96,6 +96,9 @@ namespace WalkingControllers
         double m_startingPositionControlTime;
         bool m_positionMoveSkipped;
 
+        bool m_isFirstExternalBase{true};
+        iDynTree::Transform m_firstExternalBaseOffset;
+
         bool m_useExternalRobotBase; /**< True if an the base is provided by the external software(Gazebo). */
         iDynTree::Transform m_robotBaseTransform; /**< Robot base to world transform */
         iDynTree::Twist m_robotBaseTwist; /**< Robot twist base expressed in mixed representation. */
