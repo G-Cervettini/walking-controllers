@@ -121,7 +121,7 @@ bool RobotInterface::getFeedbacksRaw(unsigned int maxAttempts, double attemptDel
                     m_firstExternalBaseOffset.setRotation(iDynTree::Rotation::RPY((*base)(3),
                                                                                    (*base)(4),
                                                                                    (*base)(5)));
-                    m_firstExternalBaseOffset = m_firstExternalBaseOffset.inverse();
+                    m_firstExternalBaseOffset = m_robotBaseTransform * m_firstExternalBaseOffset.inverse();
 
                     m_isFirstExternalBase = false;
                 }
