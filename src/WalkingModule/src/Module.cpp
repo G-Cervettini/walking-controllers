@@ -633,55 +633,6 @@ bool WalkingModule::updateModule()
 
         m_profiler->setInitTime("Total");
 
-        // check desired planner input
-        yarp::sig::Vector *desiredUnicyclePosition = nullptr;
-        desiredUnicyclePosition = m_desiredUnyciclePositionPort.read(false);
-        if (desiredUnicyclePosition != nullptr)
-        {
-            applyGoalScaling(*desiredUnicyclePosition);
-            if (!setPlannerInput(*desiredUnicyclePosition))
-            {
-                yError() << "[WalkingModule::updateModule] Unable to set the planner input";
-                return false;
-            }
-        }
-
-        // if a new trajectory is required check if its the time to evaluate the new trajectory or
-        // the time to attach new one
-        if (m_newTrajectoryRequired)
-        {
-            // when we are near to the merge point the new trajectory is evaluated
-            if (m_newTrajectoryMergeCounter == m_plannerAdvanceTimeSteps)
-            {
-
-                double initTimeTrajectory;
-                initTimeTrajectory = m_time + m_newTrajectoryMergeCounter * m_dT;
-
-                iDynTree::Transform measuredTransform = m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter];
-
-                // ask for a new trajectory
-                if (!askNewTrajectories(initTimeTrajectory, !m_isLeftFixedFrame.front(),
-                                        measuredTransform, m_newTrajectoryMergeCounter,
-                                        m_plannerInput))
-                {
-                    yError() << "[WalkingModule::updateModule] Unable to ask for a new trajectory.";
-                    return false;
-                }
-            }
-
-            if (m_newTrajectoryMergeCounter == 2)
-            {
-                if (!updateTrajectories(m_newTrajectoryMergeCounter))
-                {
-                    yError() << "[WalkingModule::updateModule] Error while updating trajectories. They were not computed yet.";
-                    return false;
-                }
-                m_newTrajectoryRequired = false;
-                resetTrajectory = true;
-            }
-
-            m_newTrajectoryMergeCounter--;
-        }
 
         if (m_robotControlHelper->getPIDHandler().usingGainScheduling())
         {
@@ -716,6 +667,74 @@ bool WalkingModule::updateModule()
         {
             yError() << "[WalkingModule::updateModule] Unable to update the FK solver.";
             return false;
+        }
+
+        // check desired planner input
+        yarp::sig::Vector *desiredUnicyclePosition = nullptr;
+        desiredUnicyclePosition = m_desiredUnyciclePositionPort.read(false);
+        if (desiredUnicyclePosition != nullptr)
+        {
+            applyGoalScaling(*desiredUnicyclePosition);
+            if (!setPlannerInput(*desiredUnicyclePosition))
+            {
+                yError() << "[WalkingModule::updateModule] Unable to set the planner input";
+                return false;
+            }
+        }
+
+        // if a new trajectory is required check if its the time to evaluate the new trajectory or
+        // the time to attach new one
+        if (m_newTrajectoryRequired)
+        {
+            // when we are near to the merge point the new trajectory is evaluated
+            if (m_newTrajectoryMergeCounter == m_plannerAdvanceTimeSteps)
+            {
+                iDynTree::Transform measuredTransform;
+                double initTimeTrajectory;
+                initTimeTrajectory = m_time + m_newTrajectoryMergeCounter * m_dT;
+
+                if (m_robotControlHelper->isExternalRobotBaseUsed())
+                {
+                    // check that both feet are in contact
+                    if (!m_leftInContact.front() || !m_rightInContact.front())
+                    {
+                        yError() << "[WalkingModule::updateModule] Unable to evaluate the new trajectory. "
+                                    "Both feet need to be in contact before computing a new trajectory. Consider reducing planner_advance_time_in_s.";
+                        return false;
+                    }
+                    measuredTransform = m_isLeftFixedFrame.front() ? m_FKSolver->getRightFootToWorldTransform() : m_FKSolver->getLeftFootToWorldTransform();
+
+                    std::cerr << "measuredTransform: " << measuredTransform.toString() << std::endl;
+                    std::cerr << "Nominal" << (m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter]).toString() << std::endl;
+
+                }
+                else
+                {
+                    measuredTransform = m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter];
+                }
+
+                // ask for a new trajectory
+                if (!askNewTrajectories(initTimeTrajectory, !m_isLeftFixedFrame.front(),
+                                        measuredTransform, m_newTrajectoryMergeCounter,
+                                        m_plannerInput))
+                {
+                    yError() << "[WalkingModule::updateModule] Unable to ask for a new trajectory.";
+                    return false;
+                }
+            }
+
+            if (m_newTrajectoryMergeCounter == 2)
+            {
+                if (!updateTrajectories(m_newTrajectoryMergeCounter))
+                {
+                    yError() << "[WalkingModule::updateModule] Error while updating trajectories. They were not computed yet.";
+                    return false;
+                }
+                m_newTrajectoryRequired = false;
+                resetTrajectory = true;
+            }
+
+            m_newTrajectoryMergeCounter--;
         }
 
         // compute the global CoP
