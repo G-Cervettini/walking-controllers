@@ -1255,21 +1255,10 @@ bool WalkingModule::generateFirstTrajectories()
         return false;
     }
 
-    if (m_robotControlHelper->isExternalRobotBaseUsed())
+    if (!m_trajectoryGenerator->generateFirstTrajectories())
     {
-        if (!m_trajectoryGenerator->generateFirstTrajectories(m_robotControlHelper->getBaseTransform().getPosition()))
-        {
-            yError() << "[WalkingModule::generateFirstTrajectories] Failed while retrieving new trajectories from the unicycle";
-            return false;
-        }
-    }
-    else
-    {
-        if (!m_trajectoryGenerator->generateFirstTrajectories())
-        {
-            yError() << "[WalkingModule::generateFirstTrajectories] Failed while retrieving new trajectories from the unicycle";
-            return false;
-        }
+        yError() << "[WalkingModule::generateFirstTrajectories] Failed while retrieving new trajectories from the unicycle";
+        return false;
     }
 
     if (!updateTrajectories(0))
@@ -1413,6 +1402,20 @@ bool WalkingModule::updateFKSolver()
     }
     else
     {
+        //If the state is prepared
+        if (m_robotState == WalkingFSM::Prepared)
+        {
+            if(!m_FKSolver->computeInitialWorldToBaseTransformFromFixedFrame(m_robotControlHelper->getBaseTransform(),
+                                                              m_leftTrajectory.front(),
+                                                              m_rightTrajectory.front(),
+                                                              m_isLeftFixedFrame.front(),
+                                                              m_robotControlHelper->getJointPosition(),
+                                                              m_robotControlHelper->getJointVelocity()))
+            {
+                yError() << "[WalkingModule::updateFKSolver] Unable to compute the initial world to base transformation.";
+                return false;
+            }
+        }
         m_FKSolver->evaluateWorldToBaseTransformation(m_robotControlHelper->getBaseTransform(),
                                                       m_robotControlHelper->getBaseTwist());
     }

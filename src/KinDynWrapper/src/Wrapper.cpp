@@ -190,27 +190,21 @@ bool WalkingFK::initialize(const yarp::os::Searchable& config,
 
     m_useExternalRobotBase = config.check("use_external_robot_base", yarp::os::Value("False")).asBool();
 
-    if(!m_useExternalRobotBase)
+    if (!setBaseFrame(lFootFrame, "leftFoot"))
     {
-        if(!setBaseFrame(lFootFrame, "leftFoot"))
-        {
-            yError() << "[initialize] Unable to set the leftFootFrame.";
-            return false;
-        }
-
-        if(!setBaseFrame(rFootFrame, "rightFoot"))
-        {
-            yError() << "[initialize] Unable to set the rightFootFrame.";
-            return false;
-        }
-
-        // Since the base is attached to the stance foot its velocity is always equal to zero
-        // (stable contact hypothesis)
-        m_baseTwist.zero();
+        yError() << "[initialize] Unable to set the leftFootFrame.";
+        return false;
     }
-    else
+
+    if (!setBaseFrame(rFootFrame, "rightFoot"))
     {
-        if(!setBaseFrame(rootFrame, "root"))
+        yError() << "[initialize] Unable to set the rightFootFrame.";
+        return false;
+    }
+
+    if (m_useExternalRobotBase)
+    {
+        if (!setBaseFrame(rootFrame, "root"))
         {
             yError() << "[initialize] Unable to set the rightFootFrame.";
             return false;
@@ -222,6 +216,12 @@ bool WalkingFK::initialize(const yarp::os::Searchable& config,
             yError() << "[initialize] Unable to set the floating base";
             return false;
         }
+    }
+    else
+    {
+        // Since the base is attached to the stance foot its velocity is always equal to zero
+        // (stable contact hypothesis)
+        m_baseTwist.zero();
     }
 
     double comHeight;
@@ -278,10 +278,10 @@ void WalkingFK::evaluateWorldToBaseTransformation(const iDynTree::Transform& roo
     if(!m_useExternalRobotBase)
     {
         yWarning() << "[evaluateWorldToBaseTransformation] The base position is not retrieved from external. There is no reason to call this function.";
-                       return;
+        return;
     }
-    auto& base = m_baseFrames["root"];
-    m_worldToBaseTransform = rootTransform * base.second;
+    auto &base = m_baseFrames["root"];
+    m_worldToBaseTransform = m_externalBaseInitialTransform * rootTransform * base.second;
     m_baseTwist = rootTwist;
 
     m_comEvaluated = false;
@@ -338,6 +338,63 @@ bool WalkingFK::evaluateWorldToBaseTransformation(const iDynTree::Transform& lef
 
     m_comEvaluated = false;
     m_dcmEvaluated = false;
+    return true;
+}
+
+bool WalkingFK::computeInitialWorldToBaseTransformFromFixedFrame(const iDynTree::Transform &externalBase,
+                                                              const iDynTree::Transform &leftFootTransform,
+                                                              const iDynTree::Transform &rightFootTransform,
+                                                              const bool &isLeftFixedFrame, const iDynTree::VectorDynSize &positionFeedbackInRadians,
+                                                              const iDynTree::VectorDynSize &velocityFeedbackInRadians)
+{
+    iDynTree::Transform tempBase;
+
+    if (isLeftFixedFrame)
+    {
+        auto &base = m_baseFrames["leftFoot"];
+        tempBase = leftFootTransform * base.second;
+        if (!m_kinDyn->setFloatingBase(base.first))
+        {
+            yError() << "[evaluateWorldToBaseTransformation] Error while setting the floating "
+                     << "base on link " << base.first;
+            return false;
+        }
+    }
+    else
+    {
+        auto base = m_baseFrames["rightFoot"];
+        tempBase = rightFootTransform * base.second;
+        if (!m_kinDyn->setFloatingBase(base.first))
+        {
+            yError() << "[WalkingFK::evaluateWorldToBaseTransformation] Error while setting the floating "
+                     << "base on link " << base.first;
+            return false;
+        }
+    }
+
+    iDynTree::Vector3 gravity;
+    gravity.zero();
+    gravity(2) = -9.81;
+
+    if (!m_kinDyn->setRobotState(tempBase, positionFeedbackInRadians,
+                                 m_baseTwist, velocityFeedbackInRadians,
+                                 gravity))
+    {
+        yError() << "[WalkingFK::setInternalRobotState] Error while updating the state.";
+        return false;
+    }
+
+    m_externalBaseInitialTransform = m_kinDyn->getWorldTransform(m_baseFrames["root"].first) * externalBase.inverse();
+
+    std::cerr << "External base initial transform: " << m_externalBaseInitialTransform.toString() << std::endl;
+    std::cerr << "Initial root from kinematics: " << m_kinDyn->getWorldTransform(m_baseFrames["root"].first).toString() << std::endl;
+    std::cerr << "initial root from external: " << externalBase.toString() << std::endl;
+    // in this specific case the base is always the root link
+    if (!m_kinDyn->setFloatingBase(m_baseFrames["root"].first))
+    {
+        yError() << "[initialize] Unable to set the floating base";
+        return false;
+    }
     return true;
 }
 

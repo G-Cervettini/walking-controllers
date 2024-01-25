@@ -70,6 +70,7 @@ namespace WalkingControllers
         bool m_firstStep; /**< True only during the first step. */
 
         iDynTree::VectorDynSize m_jointPositions; /**< joint positions in radians. */
+        iDynTree::Transform m_externalBaseInitialTransform; /**< initial base transform. */
 
         /**
          * Set the model of the robot.
@@ -138,6 +139,12 @@ namespace WalkingControllers
         bool evaluateWorldToBaseTransformation(const iDynTree::Transform& leftFootTransform,
                                                const iDynTree::Transform& rightFootTransform,
                                                const bool& isLeftFixedFrame);
+
+        bool computeInitialWorldToBaseTransformFromFixedFrame(const iDynTree::Transform &externalBase,
+                                                              const iDynTree::Transform &leftFootTransform,
+                                                              const iDynTree::Transform &rightFootTransform,
+                                                              const bool &isLeftFixedFrame, const iDynTree::VectorDynSize &positionFeedbackInRadians,
+                                                              const iDynTree::VectorDynSize &velocityFeedbackInRadians);
 
         /**
          * Set the base for the onTheFly feature
