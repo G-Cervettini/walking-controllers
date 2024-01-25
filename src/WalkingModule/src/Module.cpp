@@ -682,6 +682,15 @@ bool WalkingModule::updateModule()
             }
         }
 
+        // if the robot base is external, every 5s ask for a stop
+        if(m_robotControlHelper->isExternalRobotBaseUsed() && (m_time - m_lastTrajectoryRequestTime > 5))
+        {
+            // initialize yarp::sig::Vector plannerInput to zero
+            const yarp::sig::Vector plannerInput = yarp::sig::Vector(3, 0.0);
+            setPlannerInput(plannerInput);
+            m_lastTrajectoryRequestTime = m_time;
+        }
+
         // if a new trajectory is required check if its the time to evaluate the new trajectory or
         // the time to attach new one
         if (m_newTrajectoryRequired)
@@ -703,9 +712,8 @@ bool WalkingModule::updateModule()
                         return false;
                     }
                     measuredTransform = m_isLeftFixedFrame.front() ? m_FKSolver->getRightFootToWorldTransform() : m_FKSolver->getLeftFootToWorldTransform();
-
-                    std::cerr << "measuredTransform: " << measuredTransform.toString() << std::endl;
-                    std::cerr << "Nominal" << (m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter]).toString() << std::endl;
+                    // std::cerr << "measuredTransform: " << measuredTransform.toString() << std::endl;
+                    // std::cerr << "Nominal" << (m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter]).toString() << std::endl;
 
                 }
                 else
@@ -1228,6 +1236,7 @@ bool WalkingModule::generateFirstTrajectories(const iDynTree::Transform &leftToR
 
     // reset the time
     m_time = 0.0;
+    m_lastTrajectoryRequestTime = 0.0;
 
     return true;
 }
@@ -1254,6 +1263,7 @@ bool WalkingModule::generateFirstTrajectories()
 
     // reset the time
     m_time = 0.0;
+    m_lastTrajectoryRequestTime = 0.0;
 
     return true;
 }
