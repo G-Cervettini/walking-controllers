@@ -618,41 +618,7 @@ bool WalkingModule::updateModule()
                 return false;
             }
 
-            // reset the retargeting client with the desired robot data
-            iDynTree::VectorDynSize zero(m_qDesired.size());
-            zero.zero();
-            // reset the internal robot state of the kindyn object
-            if (!m_FKSolver->setInternalRobotState(m_qDesired, zero))
-            {
-                yError() << "[WalkingModule::updateModule] Unable to set the robot state before resetting the retargeting client.";
-                return false;
-            }
-
-            if (!m_retargetingClient->reset(*m_FKSolver))
-            {
-                yError() << "[WalkingModule::updateModule] Unable to reset the retargeting client.";
-                return false;
-            }
-
-            // reset the internal robot state of the kindyn object
-            if (!m_FKSolver->setInternalRobotState(m_robotControlHelper->getJointPosition(),
-                                                   m_robotControlHelper->getJointVelocity()))
-            {
-                yError() << "[WalkingModule::updateModule] Unable to set the robot state after resetting the retargeting client.";
-                return false;
-            }
-
             m_firstRun = true;
-
-            if (m_useRootLinkForHeight)
-            {
-                m_comHeightOffset = m_FKSolver->getRootLinkToWorldTransform().getPosition()(2) - m_FKSolver->getCoMPosition()(2);
-                yInfo() << "[WalkingModule::updateModule] rootlink offset " << m_comHeightOffset << ".";
-            }
-            else
-            {
-                m_comHeightOffset = 0.0;
-            }
 
             m_robotState = WalkingFSM::Prepared;
 
@@ -1425,6 +1391,27 @@ bool WalkingModule::updateFKSolver()
     {
         yError() << "[WalkingModule::updateFKSolver] Unable to set the robot state.";
         return false;
+    }
+
+    if (m_robotState == WalkingFSM::Prepared)
+    {
+
+        if (m_useRootLinkForHeight)
+        {
+            m_comHeightOffset = m_FKSolver->getRootLinkToWorldTransform().getPosition()(2) - m_FKSolver->getCoMPosition()(2);
+            yInfo() << "[WalkingModule::updateModule] rootlink offset " << m_comHeightOffset << ".";
+        }
+        else
+        {
+            m_comHeightOffset = 0.0;
+        }
+
+        if (!m_retargetingClient->reset(*m_FKSolver))
+        {
+            yError() << "[WalkingModule::updateModule] Unable to reset the retargeting client.";
+            return false;
+        }
+
     }
 
     return true;

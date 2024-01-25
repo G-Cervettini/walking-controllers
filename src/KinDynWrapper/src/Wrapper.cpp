@@ -386,9 +386,6 @@ bool WalkingFK::computeInitialWorldToBaseTransformFromFixedFrame(const iDynTree:
 
     m_externalBaseInitialTransform = m_kinDyn->getWorldTransform(m_baseFrames["root"].first) * externalBase.inverse();
 
-    std::cerr << "External base initial transform: " << m_externalBaseInitialTransform.toString() << std::endl;
-    std::cerr << "Initial root from kinematics: " << m_kinDyn->getWorldTransform(m_baseFrames["root"].first).toString() << std::endl;
-    std::cerr << "initial root from external: " << externalBase.toString() << std::endl;
     // in this specific case the base is always the root link
     if (!m_kinDyn->setFloatingBase(m_baseFrames["root"].first))
     {
