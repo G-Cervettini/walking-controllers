@@ -167,6 +167,8 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
 
     double plannerAdvanceTimeInS = rf.check("planner_advance_time_in_s", yarp::os::Value(0.18)).asFloat64();
     m_plannerAdvanceTimeSteps = std::round(plannerAdvanceTimeInS / m_dT) + 2; // The additional 2 steps are because the trajectory from the planner is requested two steps in advance wrt the merge point
+    m_lastTrajectoryRequestTime = 0.0;
+    m_goalSustainCounter = 0;
 
     std::string name;
     if (!YarpUtilities::getStringFromSearchable(generalOptions, "name", name))
@@ -682,13 +684,43 @@ bool WalkingModule::updateModule()
             }
         }
 
-        // if the robot base is external, every 5s ask for a stop
-        if(m_robotControlHelper->isExternalRobotBaseUsed() && (m_time - m_lastTrajectoryRequestTime > 5))
+        // if the robot base is external, every m_plannerAdvanceTimeSteps we ask for a new trajectory
+        if(m_robotControlHelper->isExternalRobotBaseUsed())
         {
-            // initialize yarp::sig::Vector plannerInput to zero
-            const yarp::sig::Vector plannerInput = yarp::sig::Vector(3, 0.0);
-            setPlannerInput(plannerInput);
-            m_lastTrajectoryRequestTime = m_time;
+            if(m_goalSustainCounter > 0)
+            {
+                // every m_plannerAdvanceTimeSteps we ask for a new trajectory
+                if(m_leftInContact.front() && m_rightInContact.front())
+                {
+                    if(m_goalSustainCounter > 2/m_dT)
+                    {
+                        if (m_time - m_lastTrajectoryRequestTime > m_plannerAdvanceTimeSteps * m_dT * 2)
+                        {
+                            // sustain the goal
+                            yarp::sig::Vector plannerInput = yarp::sig::Vector(3, 0.0);
+                            plannerInput[0] = m_plannerInput[0];
+                            plannerInput[1] = m_plannerInput[1];
+                            plannerInput[2] = m_plannerInput[2];
+                            setPlannerInput(plannerInput);
+                            m_lastTrajectoryRequestTime = m_time;
+                            std::cerr << "Sustaining the goal " + plannerInput.toString() << std::endl;
+                        }
+                    }
+                    else
+                    {
+                        if (m_time - m_lastTrajectoryRequestTime > m_plannerAdvanceTimeSteps * m_dT * 2 )
+                        {
+                            // stop the robot
+                            yarp::sig::Vector plannerInput = yarp::sig::Vector(3, 0.0);
+                            setPlannerInput(plannerInput);
+                            m_lastTrajectoryRequestTime = m_time;
+                            std::cerr << "Stop the robot " + plannerInput.toString() << std::endl;
+                        }
+                    }
+                }
+
+                m_goalSustainCounter--;
+            }
         }
 
         // if a new trajectory is required check if its the time to evaluate the new trajectory or
@@ -705,12 +737,12 @@ bool WalkingModule::updateModule()
                 if (m_robotControlHelper->isExternalRobotBaseUsed())
                 {
                     // check that both feet are in contact
-                    if (!m_leftInContact.front() || !m_rightInContact.front())
-                    {
-                        yError() << "[WalkingModule::updateModule] Unable to evaluate the new trajectory. "
-                                    "Both feet need to be in contact before computing a new trajectory. Consider reducing planner_advance_time_in_s.";
-                        return false;
-                    }
+                    //if (!m_leftInContact.front() || !m_rightInContact.front())
+                    //{
+                    //    yError() << "[WalkingModule::updateModule] Unable to evaluate the new trajectory. "
+                    //                "Both feet need to be in contact before computing a new trajectory. Consider reducing planner_advance_time_in_s.";
+                    //    return false;
+                    //}
                     measuredTransform = m_isLeftFixedFrame.front() ? m_FKSolver->getRightFootToWorldTransform() : m_FKSolver->getLeftFootToWorldTransform();
                     // std::cerr << "measuredTransform: " << measuredTransform.toString() << std::endl;
                     // std::cerr << "Nominal" << (m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter]).toString() << std::endl;
@@ -1574,6 +1606,9 @@ bool WalkingModule::setGoal(const yarp::sig::Vector &plannerInput)
 
     if (m_robotState != WalkingFSM::Walking)
         return false;
+
+    if(m_robotControlHelper->isExternalRobotBaseUsed())
+        m_goalSustainCounter = 22/m_dT;
 
     return setPlannerInput(plannerInput);
 }

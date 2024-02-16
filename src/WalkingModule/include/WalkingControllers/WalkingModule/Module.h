@@ -67,6 +67,7 @@ namespace WalkingControllers
         double m_dT; /**< RFModule period. */
         double m_time; /**< Current time. */
         double m_lastTrajectoryRequestTime; /**< Time of the last trajectory request if isExternalRobotBaseUsed. */
+        int m_goalSustainCounter; /**< Counter to sustain the setGoal() command if isExternalRobotBaseUsed. */
         std::string m_robot; /**< Robot name. */
 
         bool m_useMPC; /**< True if the MPC controller is used. */
