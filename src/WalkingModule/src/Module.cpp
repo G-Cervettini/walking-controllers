@@ -703,7 +703,7 @@ bool WalkingModule::updateModule()
                             plannerInput[2] = m_plannerInput[2];
                             setPlannerInput(plannerInput);
                             m_lastTrajectoryRequestTime = m_time;
-                            std::cerr << "Sustaining the goal " + plannerInput.toString() << std::endl;
+                            // std::cerr << "Sustaining the goal " + plannerInput.toString() << std::endl;
                         }
                     }
                     else
@@ -714,7 +714,7 @@ bool WalkingModule::updateModule()
                             yarp::sig::Vector plannerInput = yarp::sig::Vector(3, 0.0);
                             setPlannerInput(plannerInput);
                             m_lastTrajectoryRequestTime = m_time;
-                            std::cerr << "Stop the robot " + plannerInput.toString() << std::endl;
+                            // std::cerr << "Stop the robot " + plannerInput.toString() << std::endl;
                         }
                     }
                 }
