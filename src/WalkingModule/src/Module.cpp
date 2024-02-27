@@ -737,12 +737,12 @@ bool WalkingModule::updateModule()
                 if (m_robotControlHelper->isExternalRobotBaseUsed())
                 {
                     // check that both feet are in contact
-                    //if (!m_leftInContact.front() || !m_rightInContact.front())
-                    //{
-                    //    yError() << "[WalkingModule::updateModule] Unable to evaluate the new trajectory. "
-                    //                "Both feet need to be in contact before computing a new trajectory. Consider reducing planner_advance_time_in_s.";
-                    //    return false;
-                    //}
+                    if (!m_leftInContact.front() || !m_rightInContact.front())
+                    {
+                        yError() << "[WalkingModule::updateModule] Unable to evaluate the new trajectory. "
+                                    "Both feet need to be in contact before computing a new trajectory. Consider reducing planner_advance_time_in_s.";
+                        return false;
+                    }
                     measuredTransform = m_isLeftFixedFrame.front() ? m_FKSolver->getRightFootToWorldTransform() : m_FKSolver->getLeftFootToWorldTransform();
                     // std::cerr << "measuredTransform: " << measuredTransform.toString() << std::endl;
                     // std::cerr << "Nominal" << (m_isLeftFixedFrame.front() ? m_rightTrajectory[m_newTrajectoryMergeCounter] : m_leftTrajectory[m_newTrajectoryMergeCounter]).toString() << std::endl;
