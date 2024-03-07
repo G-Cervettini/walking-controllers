@@ -72,6 +72,7 @@ namespace WalkingControllers
 
         bool m_useMPC; /**< True if the MPC controller is used. */
         bool m_useQPIK; /**< True if the QP-IK is used. */
+        bool m_useFeetImu{false}; /**< True if the feet IMU are used. */
         bool m_dumpData; /**< True if data are saved. */
         bool m_firstRun; /**< True if it is the first run. */
         bool m_skipDCMController; /**< True if the desired ZMP should be used instead of the DCM controller. */

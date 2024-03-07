@@ -347,6 +347,10 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
 
+    bool useLeftFootImu = generalOptions.check("use_left_foot_imu", yarp::os::Value(false)).asBool();
+    bool useRightFootImu = generalOptions.check("use_right_foot_imu", yarp::os::Value(false)).asBool();
+    m_useFeetImu = useLeftFootImu || useRightFootImu;
+
     // initialize the logger
     if (m_dumpData)
     {
@@ -515,6 +519,14 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setCoMSetPoint(desiredCoMPosition, desiredCoMVelocity);
     ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
+
+    if (m_useFeetImu)
+    {
+        ok = ok
+             && m_BLFIKSolver->setLeftFootMeasuredOrientation(m_FKSolver->getLeftFootToWorldTransform().getRotation());
+        ok = ok
+             && m_BLFIKSolver->setRightFootMeasuredOrientation(m_FKSolver->getRightFootToWorldTransform().getRotation());
+    }
 
     if (m_useRootLinkForHeight)
     {
