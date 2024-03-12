@@ -351,6 +351,19 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
     bool useRightFootImu = generalOptions.check("use_right_foot_imu", yarp::os::Value(false)).asBool();
     m_useFeetImu = useLeftFootImu || useRightFootImu;
 
+    if(m_useFeetImu)
+    {
+        m_robotFeetPort.open("/walking-coordinator/feetIMU:i");
+        // connect port
+        if(!yarp::os::Network::connect("/baseEstimatorFromFootIMU/feetIMU:o", "/walking-coordinator/feetIMU:i"))
+        {
+            yError() << "Unable to connect to port " << "/walking-coordinator/feetIMU:i";
+            return false;
+        }
+        m_leftFootOrientation_fromIMU = iDynTree::Rotation::Identity();
+        m_rightFootOrientation_fromIMU = iDynTree::Rotation::Identity();
+    }
+
     // initialize the logger
     if (m_dumpData)
     {
@@ -522,10 +535,22 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
 
     if (m_useFeetImu)
     {
+        yarp::sig::Vector *feetIMU = NULL;
+        feetIMU = m_robotFeetPort.read(false);
+        if(feetIMU != NULL)
+        {
+            m_leftFootOrientation_fromIMU = iDynTree::Rotation::RPY((*feetIMU)(0),
+                                                                    (*feetIMU)(1),
+                                                                    (*feetIMU)(2));
+            m_rightFootOrientation_fromIMU = iDynTree::Rotation::RPY((*feetIMU)(3),
+                                                                     (*feetIMU)(4),
+                                                                     (*feetIMU)(5));
+        }
+
         ok = ok
-             && m_BLFIKSolver->setLeftFootMeasuredOrientation(m_FKSolver->getLeftFootToWorldTransform().getRotation());
+             && m_BLFIKSolver->setLeftFootMeasuredOrientation(m_leftFootOrientation_fromIMU);
         ok = ok
-             && m_BLFIKSolver->setRightFootMeasuredOrientation(m_FKSolver->getRightFootToWorldTransform().getRotation());
+             && m_BLFIKSolver->setRightFootMeasuredOrientation(m_rightFootOrientation_fromIMU);
     }
 
     if (m_useRootLinkForHeight)

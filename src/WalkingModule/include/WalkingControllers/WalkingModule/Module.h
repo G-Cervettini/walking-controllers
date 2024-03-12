@@ -128,9 +128,12 @@ namespace WalkingControllers
         iDynTree::VectorDynSize m_dqDesired; /**< Vector containing the results of the IK algorithm [rad]. */
 
         iDynTree::Rotation m_inertial_R_worldFrame; /**< Rotation between the inertial and the world frame. */
+        iDynTree::Rotation m_leftFootOrientation_fromIMU;
+        iDynTree::Rotation m_rightFootOrientation_fromIMU;
 
         yarp::os::Port m_rpcPort; /**< Remote Procedure Call port. */
         yarp::os::BufferedPort<yarp::sig::Vector> m_desiredUnyciclePositionPort; /**< Desired robot position port. */
+        yarp::os::BufferedPort<yarp::sig::Vector> m_robotFeetPort; /**< Robot feet orientations data port. */
 
         bool m_newTrajectoryRequired; /**< if true a new trajectory will be merged soon. (after m_newTrajectoryMergeCounter - 2 cycles). */
         size_t m_newTrajectoryMergeCounter; /**< The new trajectory will be merged after m_newTrajectoryMergeCounter - 2 cycles. */
