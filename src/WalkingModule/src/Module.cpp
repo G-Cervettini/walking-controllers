@@ -778,6 +778,18 @@ bool WalkingModule::updateModule()
                     {
                         yError() << "[WalkingModule::updateModule] Unable to evaluate the new trajectory. "
                                     "Both feet need to be in contact before computing a new trajectory. Consider reducing planner_advance_time_in_s.";
+                        // print elements of m_leftInContact and m_rightInContact
+                        for (size_t i = 0; i < m_leftInContact.size(); i++)
+                        {
+                            std::cerr << m_leftInContact[i] << " ";
+                        }
+                        std::cerr << std::endl;
+                        for (size_t i = 0; i < m_rightInContact.size(); i++)
+                        {
+                            std::cerr << m_rightInContact[i] << " ";
+                        }
+                        std::cerr << std::endl;
+
                         return false;
                     }
                     measuredTransform = m_isLeftFixedFrame.front() ? m_FKSolver->getRightFootToWorldTransform() : m_FKSolver->getLeftFootToWorldTransform();
